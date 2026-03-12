@@ -1,10 +1,10 @@
 
 from __future__ import annotations
-
 import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from PDF_Analyzer import analyze_pdf_for_request
 #openai is an optional dependency, so we handle the ImportError gracefully. If the package is not installed, we set OpenAI to None and raise a RuntimeError when it's used.
 try:
     from openai import OpenAI
@@ -89,11 +89,20 @@ def find_best_pdf(description: str) -> PdfCandidate | None:
 
     return rank_with_openai(description, candidates)
 
-#The main function prompts the user for a description of the PDF they want, finds the best match using the find_best_pdf function, and prints the result. It also handles cases where no description is provided or when no PDFs are found.
+
+def find_and_analyze_pdf(info_request: str) -> tuple[PdfCandidate, dict[str, str]] | None:
+    match = find_best_pdf(info_request)
+    if match is None:
+        return None
+
+    analysis = analyze_pdf_for_request(match.path, match.label, info_request)
+    return match, analysis
+
+#The main function prompts the user for a description of citation, finds the best match using the find_best_pdf function, and prints the result. It also handles cases where no description is provided or when no PDFs are found.
 def main() -> None:
-    user_description = input("Describe the PDF you want: ").strip()
-    if not user_description:
-        print("No description provided.")
+    info_request = input("What citation or info do you want? ").strip()
+    if not info_request:
+        print("No request provided.")
         return
 
     candidates = build_candidates(PDF_DIR)
@@ -105,14 +114,18 @@ def main() -> None:
     for candidate in candidates:
         print(f"- {candidate.label}")
 
-    match = rank_with_openai(user_description, candidates)
-    if match is None:
+    result = find_and_analyze_pdf(info_request)
+    if result is None:
         print("OpenAI could not choose a PDF from the list.")
         return
+
+    match, analysis = result
 
     print(f"Best match: {match.label}")
     print(f"Path: {match.path}")
     print("Matching source: OpenAI")
+    print(f"Citation: {analysis['citation']}")
+    print(f"Requested info: {analysis['requested_info']}")
 
 
 if __name__ == "__main__":
