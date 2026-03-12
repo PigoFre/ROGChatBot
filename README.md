@@ -5,7 +5,7 @@ Description: The system is an adaptive RAG chatbot for the Data Studies Bibliogr
 
 Python Libraries:
 astapi or flask
-
+OPENA AI, for global calls!
 pymupdf or pdfplumber for PDF extraction
 
 chromadb
