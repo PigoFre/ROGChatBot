@@ -1,23 +1,50 @@
 # ROGChatBot
-The aim of the project is to develop an adaptive chatbot tailored for answering questions about data studies based on a set of academic journal articles and conference papers.
-Description: The system is an adaptive RAG chatbot for the Data Studies Bibliography. A command-line ingestion pipeline processes approved PDF articles into chunked, embedded, metadata-rich records stored in a local vector database. A web chat interface retrieves relevant passages and uses either a local open model or a commercial API model to generate grounded responses with citations. User feedback is logged and used to iteratively improve retrieval, prompting, and answer quality.
 
+ROGChatBot is a small web app that lets a user enter a citation or information request, selects the most relevant PDF from `PDF_Database`, and returns a citation plus requested information using OpenAI.
 
-Requirements:
+## Local development
 
+1. Create and activate a Python 3.11 virtual environment.
+2. Install dependencies:
 
-astapi or flask
+```bash
+pip install -r requirements.txt
+```
 
-pathlib
+3. Set environment variables:
 
-OPENA AI, for global calls!
+```bash
+set OPENAI_API_KEY=your_key_here
+set OPENAI_MODEL=gpt-4o-mini
+```
 
+4. Start the app:
 
-pymupdf or pdfplumber for PDF extraction
+```bash
+python app.py
+```
 
-chromadb
+5. Open `http://localhost:5000`.
 
-ollama or direct HTTP calls to Ollama API
+## Deploying on Render
 
-optionally langchain if you want faster setup
+This repo includes:
 
+- `render.yaml` for Render service configuration
+- `requirements.txt` for Python dependencies
+- `runtime.txt` to pin the Python version
+
+On Render, create a new Blueprint or Web Service from this repo and set:
+
+- `OPENAI_API_KEY`
+- optionally `OPENAI_MODEL`
+
+Render will install dependencies with `pip install -r requirements.txt` and start the service with `gunicorn app:app`.
+
+## Project structure
+
+- `app.py`: Flask app and API routes
+- `frontend/index.html`: frontend UI
+- `BackendsGLOBAL/PDFFinder.py`: PDF selection logic
+- `BackendsGLOBAL/PDF_Analyzer.py`: PDF text extraction and OpenAI analysis
+- `PDF_Database/`: source PDFs searched by the app

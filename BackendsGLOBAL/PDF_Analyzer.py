@@ -12,7 +12,7 @@ except ImportError:  # pragma: no cover - optional dependency at runtime
 
 
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-#Parses the open ai response to ensure we get the json content we expect, even if the model wraps it in code fences or includes additional text. It first tries to parse the entire response as JSON, and if that fails, it looks for JSON within code fences or standalone JSON objects in the response.
+
 
 def parse_json_response(content: str) -> dict[str, str]:
     try:
@@ -28,7 +28,6 @@ def parse_json_response(content: str) -> dict[str, str]:
 
         raise RuntimeError("OpenAI returned a response that was not valid JSON.")
 
-#Uses pydf package to extract text from the first few pages of the PDF, up to a specified character limit. It handles cases where text extraction might fail and ensures that we get a reasonable excerpt for analysis.
 
 def extract_pdf_excerpt(pdf_path: Path, char_limit: int = 4000) -> str:
     try:
@@ -58,7 +57,7 @@ def extract_pdf_excerpt(pdf_path: Path, char_limit: int = 4000) -> str:
     except Exception as exc:  # pragma: no cover - depends on PDF contents
         raise RuntimeError(f"Could not extract text from {pdf_path.name}.") from exc
 
-#Finds the analysis, than returns the citation and the requested info as a dictionary. It uses the extracted text from the PDF and the user's request to generate a response from OpenAI, which is then parsed to extract the relevant information.
+
 def analyze_pdf_for_request(pdf_path: Path, pdf_label: str, info_request: str) -> dict[str, str]:
     if OpenAI is None:
         raise RuntimeError("The openai package is not installed.")

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROGChatBot</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --panel: #fffaf2;
+      --border: #d8c8ad;
+      --text: #1f1a14;
+      --muted: #6f6254;
+      --accent: #9f4f2f;
+      --accent-dark: #7e3f25;
+      --shadow: 0 24px 60px rgba(86, 59, 31, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(159, 79, 47, 0.16), transparent 30%),
+        linear-gradient(180deg, #efe7d8 0%, var(--bg) 55%, #e8ddca 100%);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .shell {
+      width: min(760px, 100%);
+      background: rgba(255, 250, 242, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      backdrop-filter: blur(8px);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    form {
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      font: inherit;
+      color: var(--text);
+      background: #fffdf8;
+    }
+
+    button {
+      width: fit-content;
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 20px;
+      font: inherit;
+      font-weight: 700;
+      color: #fffaf2;
+      background: var(--accent);
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    button:hover {
+      background: var(--accent-dark);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.7;
+      transform: none;
+    }
+
+    .status {
+      min-height: 24px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .result {
+      margin-top: 18px;
+      display: none;
+      border-top: 1px solid var(--border);
+      padding-top: 18px;
+    }
+
+    .result.visible {
+      display: block;
+    }
+
+    .result-card {
+      background: #fffdf8;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-top: 12px;
+    }
+
+    .result-card h2 {
+      margin: 0 0 10px;
+      font-size: 1.1rem;
+    }
+
+    .result-card p {
+      margin: 0;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <h1>ROGChatBot</h1>
+    <p>Search the PDF database for a citation or a specific piece of information.</p>
+
+    <form id="query-form">
+      <label for="prompt">What citation or info do you want?</label>
+      <textarea id="prompt" name="prompt" placeholder="Enter a citation request or question about the PDF collection." required></textarea>
+      <button id="submit-button" type="submit">Send</button>
+    </form>
+
+    <div id="status" class="status"></div>
+
+    <section id="result" class="result" aria-live="polite">
+      <div class="result-card">
+        <h2>Selected PDF</h2>
+        <p id="match"></p>
+      </div>
+      <div class="result-card">
+        <h2>Citation</h2>
+        <p id="citation"></p>
+      </div>
+      <div class="result-card">
+        <h2>Requested Info</h2>
+        <p id="requested-info"></p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("query-form");
+    const promptInput = document.getElementById("prompt");
+    const submitButton = document.getElementById("submit-button");
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+    const matchEl = document.getElementById("match");
+    const citationEl = document.getElementById("citation");
+    const requestedInfoEl = document.getElementById("requested-info");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const prompt = promptInput.value.trim();
+      if (!prompt) {
+        statusEl.textContent = "Enter a request first.";
+        resultEl.classList.remove("visible");
+        return;
+      }
+
+      submitButton.disabled = true;
+      statusEl.textContent = "Searching PDFs...";
+      resultEl.classList.remove("visible");
+
+      try {
+        const response = await fetch("/api/query", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ request: prompt })
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || "Request failed.");
+        }
+
+        matchEl.textContent = `${payload.match_label}\n${payload.match_path}`;
+        citationEl.textContent = payload.citation || "No citation returned.";
+        requestedInfoEl.textContent = payload.requested_info || "No requested info returned.";
+        statusEl.textContent = "Complete.";
+        resultEl.classList.add("visible");
+      } catch (error) {
+        statusEl.textContent = error.message;
+        resultEl.classList.remove("visible");
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
