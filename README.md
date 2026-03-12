@@ -8,6 +8,7 @@ Requirements:
 
 astapi or flask
 
+pathlib
 
 OPENA AI, for global calls!
 
