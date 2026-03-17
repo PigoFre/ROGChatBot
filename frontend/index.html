@@ -61,6 +61,11 @@
       gap: 14px;
     }
 
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
     label {
       font-size: 0.95rem;
       font-weight: 600;
@@ -100,6 +105,35 @@
       cursor: wait;
       opacity: 0.7;
       transform: none;
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 18px;
+      background: rgba(255, 253, 248, 0.86);
+      padding: 20px;
+      text-align: center;
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    }
+
+    .dropzone.dragging {
+      border-color: var(--accent);
+      background: #fff7ee;
+      transform: translateY(-1px);
+    }
+
+    .dropzone p {
+      margin: 0 0 12px;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .secondary-button {
+      background: transparent;
+      color: var(--accent-dark);
+      border: 1px solid var(--border);
     }
 
     .status {
@@ -145,13 +179,22 @@
     <h1>ROGChatBot</h1>
     <p>Search the PDF database for a citation or a specific piece of information.</p>
 
-    <form id="query-form">
-      <label for="prompt">What citation or info do you want?</label>
-      <textarea id="prompt" name="prompt" placeholder="Enter a citation request or question about the PDF collection." required></textarea>
-      <button id="submit-button" type="submit">Send</button>
-    </form>
+    <div class="stack">
+      <section class="dropzone" id="dropzone">
+        <p>Drag and drop a PDF here to add it to the database.</p>
+        <button id="choose-file-button" class="secondary-button" type="button">Choose PDF</button>
+        <input id="file-input" class="file-input" type="file" accept=".pdf,application/pdf">
+      </section>
+
+      <form id="query-form">
+        <label for="prompt">What citation or info do you want?</label>
+        <textarea id="prompt" name="prompt" placeholder="Enter a citation request or question about the PDF collection." required></textarea>
+        <button id="submit-button" type="submit">Send</button>
+      </form>
+    </div>
 
     <div id="status" class="status"></div>
+    <div id="upload-status" class="status"></div>
 
     <section id="result" class="result" aria-live="polite">
       <div class="result-card">
@@ -173,11 +216,77 @@
     const form = document.getElementById("query-form");
     const promptInput = document.getElementById("prompt");
     const submitButton = document.getElementById("submit-button");
+    const fileInput = document.getElementById("file-input");
+    const chooseFileButton = document.getElementById("choose-file-button");
+    const dropzone = document.getElementById("dropzone");
     const statusEl = document.getElementById("status");
+    const uploadStatusEl = document.getElementById("upload-status");
     const resultEl = document.getElementById("result");
     const matchEl = document.getElementById("match");
     const citationEl = document.getElementById("citation");
     const requestedInfoEl = document.getElementById("requested-info");
+
+    async function uploadFile(file) {
+      if (!file) {
+        return;
+      }
+
+      if (!file.name.toLowerCase().endsWith(".pdf")) {
+        uploadStatusEl.textContent = "Only PDF files can be uploaded.";
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      uploadStatusEl.textContent = `Uploading ${file.name}...`;
+
+      try {
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || "Upload failed.");
+        }
+
+        uploadStatusEl.textContent = `Uploaded ${payload.filename}`;
+      } catch (error) {
+        uploadStatusEl.textContent = error.message;
+      }
+    }
+
+    chooseFileButton.addEventListener("click", () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener("change", async () => {
+      const [file] = fileInput.files;
+      await uploadFile(file);
+      fileInput.value = "";
+    });
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropzone.classList.add("dragging");
+      });
+    });
+
+    ["dragleave", "dragend"].forEach((eventName) => {
+      dropzone.addEventListener(eventName, () => {
+        dropzone.classList.remove("dragging");
+      });
+    });
+
+    dropzone.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      dropzone.classList.remove("dragging");
+
+      const [file] = event.dataTransfer.files;
+      await uploadFile(file);
+    });
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
